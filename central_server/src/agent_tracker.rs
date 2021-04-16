@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use serde_json as json;
 use std::{
     collections::HashSet,
     mem::take,
@@ -26,21 +27,21 @@ impl Connections {
 
 #[derive(Clone)]
 pub struct ConnectedAgentsWatch {
-    receiver: watch::Receiver<HashSet<IpAddr>>,
+    pub receiver: watch::Receiver<String>,
 }
 
 pub struct AgentTracker {
     connections: Arc<Mutex<Connections>>,
     heartbeats: Arc<AsyncMutex<mpsc::Receiver<IpAddr>>>,
     heartbeat_sender: mpsc::Sender<IpAddr>,
-    agents: watch::Sender<HashSet<IpAddr>>,
-    agents_listener: watch::Receiver<HashSet<IpAddr>>,
+    agents: watch::Sender<String>,
+    agents_listener: watch::Receiver<String>,
 }
 
 impl AgentTracker {
     pub fn new() -> Self {
         let (heartbeat_sender, heartbeats) = mpsc::channel(1);
-        let (agents, agents_listener) = watch::channel(HashSet::new());
+        let (agents, agents_listener) = watch::channel(json::json!([]).to_string());
         Self {
             connections: Arc::new(Mutex::new(Connections::new())),
             heartbeats: Arc::new(AsyncMutex::new(heartbeats)),
@@ -58,6 +59,18 @@ impl AgentTracker {
         ConnectedAgentsWatch {
             receiver: self.agents_listener.clone(),
         }
+    }
+
+    fn publish_new_agents_list(&self, connections: &HashSet<IpAddr>) -> Result<()> {
+        let payload_raw = json::Value::Array(
+            connections
+                .iter()
+                .map(|val| json::Value::String(val.to_string()))
+                .collect(),
+        );
+        let payload = serde_json::to_string(&payload_raw)?;
+        self.agents.send(payload)?;
+        Ok(())
     }
 
     async fn process_heartbeats(&self) -> Result<()> {
@@ -78,7 +91,7 @@ impl AgentTracker {
 
             connections.fresh.insert(agent_addr);
             if connections.current.insert(agent_addr) {
-                self.agents.send(connections.current.clone())?;
+                self.publish_new_agents_list(&connections.current)?;
                 log::info!("Connections changed: {:?}", connections.current);
             }
         }
@@ -97,7 +110,7 @@ impl AgentTracker {
             connections.current = take(&mut connections.fresh);
 
             if needs_update {
-                self.agents.send(connections.current.clone())?;
+                self.publish_new_agents_list(&connections.current)?;
                 log::info!("Connections changed: {:?}", connections.current);
             }
         }
