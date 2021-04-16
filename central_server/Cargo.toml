@@ -1,0 +1,15 @@
+[package]
+name = "central_server"
+version = "0.1.0"
+authors = ["Finomnis <finomnis@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.5.0", features = ["full"] }
+tokio-tungstenite = "0.14.0"
+anyhow = "1.0"
+log = "0.4.14"
+env_logger = "0.8.3"
+futures-util = "0.3.14"
