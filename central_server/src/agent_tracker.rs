@@ -24,6 +24,11 @@ impl Connections {
     }
 }
 
+#[derive(Clone)]
+pub struct ConnectedAgentsWatch {
+    receiver: watch::Receiver<HashSet<IpAddr>>,
+}
+
 pub struct AgentTracker {
     connections: Arc<Mutex<Connections>>,
     heartbeats: Arc<AsyncMutex<mpsc::Receiver<IpAddr>>>,
@@ -47,6 +52,12 @@ impl AgentTracker {
 
     pub fn create_heartbeat_provider(&self) -> HeartbeatProvider {
         HeartbeatProvider::new(self.heartbeat_sender.clone())
+    }
+
+    pub fn create_connected_agents_watch(&self) -> ConnectedAgentsWatch {
+        ConnectedAgentsWatch {
+            receiver: self.agents_listener.clone(),
+        }
     }
 
     async fn process_heartbeats(&self) -> Result<()> {

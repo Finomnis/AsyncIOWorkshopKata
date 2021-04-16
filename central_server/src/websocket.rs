@@ -3,7 +3,9 @@ use futures_util::StreamExt;
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
-async fn connection(socket: TcpStream, addr: SocketAddr) {
+use crate::agent_tracker::ConnectedAgentsWatch;
+
+async fn connection(socket: TcpStream, addr: SocketAddr, agents_watch: ConnectedAgentsWatch) {
     let ws_stream = match tokio_tungstenite::accept_async(socket).await {
         Ok(ws) => ws,
         Err(err) => {
@@ -21,11 +23,11 @@ async fn connection(socket: TcpStream, addr: SocketAddr) {
     };
 }
 
-pub async fn server() -> Result<()> {
+pub async fn server(agents_watch: ConnectedAgentsWatch) -> Result<()> {
     let listener = TcpListener::bind("0.0.0.0:9001").await?;
 
     loop {
         let (socket, addr) = listener.accept().await?;
-        tokio::spawn(connection(socket, addr));
+        tokio::spawn(connection(socket, addr, agents_watch.clone()));
     }
 }

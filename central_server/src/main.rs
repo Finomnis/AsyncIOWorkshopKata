@@ -13,11 +13,12 @@ async fn main() -> Result<()> {
     // Initialize agent tracker object
     let tracker = AgentTracker::new();
     let heartbeat_provider = tracker.create_heartbeat_provider();
+    let agents_watch = tracker.create_connected_agents_watch();
 
     // Execute tasks
     tokio::try_join!(
         heartbeats::server(heartbeat_provider),
-        websocket::server(),
+        websocket::server(agents_watch),
         tracker.main()
     )?;
 
