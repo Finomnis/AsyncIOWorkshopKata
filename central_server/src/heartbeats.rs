@@ -36,13 +36,17 @@ async fn heartbeat_connection(
         Ok(_) => {}
     };
 
-    if msg == "Heartbeat!" {
-        if let Err(err) = heartbeat_provider.send_heartbeat(addr.ip()).await {
-            log::error!("Unable to register heartbeat: {}", err);
-        }
+    if msg != "Heartbeat!" {
+        log::warn!(
+            "Heartbeat connection '{}' did not send 'Heartbeat!'!",
+            addr.ip()
+        );
+        return;
     }
 
-    log::info!("Msg ({}): {}", addr, msg);
+    if let Err(err) = heartbeat_provider.send_heartbeat(addr.ip()).await {
+        log::error!("Unable to register heartbeat: {}", err);
+    }
 }
 
 pub async fn server(heartbeat_provider: HeartbeatProvider) -> Result<()> {
