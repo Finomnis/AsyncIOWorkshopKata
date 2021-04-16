@@ -21,7 +21,7 @@ async fn connection(socket: TcpStream, addr: SocketAddr) {
     };
 }
 
-pub async fn websocket_server() -> Result<()> {
+pub async fn server() -> Result<()> {
     let listener = TcpListener::bind("0.0.0.0:9001").await?;
 
     loop {
