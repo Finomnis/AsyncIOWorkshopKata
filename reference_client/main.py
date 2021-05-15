@@ -4,6 +4,8 @@ import websockets
 import json
 from aioconsole import ainput
 
+from heartbeats import send_heartbeat, BeatingHearts
+
 logger = logging.getLogger(__name__)
 
 receivers = []
@@ -11,24 +13,18 @@ receivers = []
 
 async def heartbeat_sender():
     while True:
-        reader, writer = await asyncio.open_connection('192.168.133.22', 9000)
-
-        writer.write(b"Heartbeat!")
-        await writer.drain()
-
-        writer.close()
-        await writer.wait_closed()
-
+        send_heartbeat()
         await asyncio.sleep(1)
 
 
 async def get_nodes():
-    async with websockets.connect('ws://192.168.133.22:9001') as websocket:
-        while True:
-            nodes = json.loads(await websocket.recv())
-            logger.info(f"Nodes: {nodes}")
-            global receivers
-            receivers = nodes
+    beating_hearts = BeatingHearts()
+    await beating_hearts.connect()
+    while True:
+        nodes = await beating_hearts.receive()
+        logger.info(f"Nodes: {nodes}")
+        global receivers
+        receivers = nodes
 
 
 async def connection_handler(socket, _path):
@@ -54,7 +50,7 @@ async def send_from_command_line():
         msg = await ainput()
         msg_json = json.dumps({"sender": "me", "message": msg})
         for node in receivers:
-            async with websockets.connect(f'ws://{node}:9002') as websocket:
+            async with websockets.connect(f'ws://192.168.133.202:9002') as websocket:
                 await websocket.send(msg_json)
 
 
